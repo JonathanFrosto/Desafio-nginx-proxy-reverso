@@ -1,0 +1,46 @@
+version: '3'
+
+services:
+  nginx:
+    build: 
+      context: ./nginx
+      dockerfile: Dockerfile.prod
+    image: jonathananthony/nginx_proxy:prod
+    container_name: proxy
+    networks:
+      - reverse_proxy
+    ports:
+      - "8080:80"
+    depends_on:
+      - node
+
+  node:
+    build:
+      context: ./node
+      dockerfile: Dockerfile.prod
+    image: jonathananthony/node:prod
+    container_name: node
+    entrypoint: dockerize -wait tcp://db:3306 -timeout 20s
+    command: npm run start
+    networks:
+      - reverse_proxy
+    depends_on:
+      - db
+  
+  db:
+    image: mysql
+    container_name: db
+    command: --default-authentication-plugin=mysql_native_password
+    tty: true
+    restart: always
+    environment:
+      - MYSQL_DATABASE=nodedb
+      - MYSQL_ROOT_PASSWORD=12345678
+    volumes:
+      - ./mysql:/var/lib/mysql
+    networks:
+      - reverse_proxy
+
+networks:
+  reverse_proxy:
+    driver: bridge
